@@ -839,6 +839,7 @@
         "form.success.sent": "Success. Check your inbox to verify your email.",
         "form.success.resent": "Verification email resent. Please check your inbox.",
         "form.success.already_verified": "This email is already verified. We will notify you on launch.",
+        "form.sending": "Sending…",
         "ticker.0": "Residential",
         "ticker.1": "Commercial Offices",
         "ticker.2": "DXF Export",
@@ -899,6 +900,7 @@
         "form.success.sent": "Готово. Проверьте почту для подтверждения email.",
         "form.success.resent": "Письмо с подтверждением отправлено повторно.",
         "form.success.already_verified": "Вы уже в списке!",
+        "form.sending": "Отправка…",
         "ticker.0": "Жилая архитектура",
         "ticker.1": "Коммерческие офисы",
         "ticker.2": "Экспорт DXF",
@@ -1042,7 +1044,8 @@
         const form = container.querySelector("form");
         const input = form.querySelector("input[type='email']");
         const button = form.querySelector("button");
-        const originalButtonText = button.textContent;
+        const buttonKey = button.getAttribute("data-i18n");
+        const originalButtonText = buttonKey ? t(buttonKey) : button.textContent;
 
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
@@ -1057,7 +1060,7 @@
           }
 
           button.disabled = true;
-          button.textContent = "Отправка…";
+          button.textContent = t("form.sending");
 
           try {
             const data = await submitWaitlist(email);
@@ -1074,7 +1077,7 @@
             setStatus(container, t("form.error.server"), "error");
           } finally {
             button.disabled = false;
-            button.textContent = originalButtonText;
+            button.textContent = buttonKey ? t(buttonKey) : originalButtonText;
           }
         });
 
