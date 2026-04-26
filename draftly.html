@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Draftly — AI-Powered Architectural CAD</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #080810;
+      --bg2: #0f0f1c;
+      --surface: #13131f;
+      --border: rgba(255,255,255,0.07);
+      --border-strong: rgba(255,255,255,0.14);
+      --text: #f0eeea;
+      --muted: rgba(240,238,234,0.52);
+      --accent: #c8ff57;
+      --accent-dim: rgba(200,255,87,0.12);
+      --accent-border: rgba(200,255,87,0.32);
+      --grid: rgba(255,255,255,0.025);
+      --danger: #ff7f7f;
+    }
+    html, body { min-height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Instrument Sans", sans-serif;
+      line-height: 1.6;
+      overflow-x: hidden;
+      position: relative;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .orb {
+      position: fixed;
+      top: -210px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 820px;
+      height: 820px;
+      background: radial-gradient(circle, rgba(200,255,87,0.08) 0%, transparent 68%);
+      pointer-events: none;
+      z-index: 0;
+      transition: transform 0.15s linear;
+    }
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 48px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      backdrop-filter: blur(12px);
+      background: rgba(8,8,16,0.74);
+    }
+    .logo {
+      font-family: "DM Serif Display", serif;
+      font-size: 23px;
+      letter-spacing: -0.5px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 999px;
+      background: rgba(8,8,16,0.72);
+    }
+    .lang-toggle, .nav-badge {
+      font-family: "Instrument Sans", sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border-radius: 999px;
+      padding: 6px 12px;
+      border: 1px solid var(--border-strong);
+    }
+    .lang-toggle {
+      color: var(--text);
+      background: rgba(255,255,255,0.03);
+      cursor: pointer;
+    }
+    .lang-toggle:hover { border-color: var(--accent-border); }
+    .nav-badge {
+      color: var(--accent);
+      background: var(--accent-dim);
+      border-color: var(--accent-border);
+    }
+    main {
+      position: relative;
+      z-index: 1;
+    }
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 126px 24px 82px;
+    }
+    .hero-label {
+      font-family: "DM Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .hero-label::before,
+    .hero-label::after {
+      content: "";
+      width: 42px;
+      height: 1px;
+      background: var(--accent-border);
+    }
+    .hero h1 {
+      font-family: "DM Serif Display", serif;
+      font-size: clamp(50px, 8vw, 102px);
+      line-height: 0.98;
+      letter-spacing: -2px;
+      max-width: 900px;
+    }
+    .hero h1 em {
+      font-style: italic;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .cursor {
+      display: inline-block;
+      width: 3px;
+      height: 0.84em;
+      margin-left: 4px;
+      background: var(--accent);
+      vertical-align: text-bottom;
+      animation: blink 1s steps(1, end) infinite;
+    }
+    .hero-sub {
+      margin: 24px auto 54px;
+      max-width: 580px;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.72;
+    }
+    .lead-capture {
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin: 0 auto;
+    }
+    .form-wrap {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      border: 1px solid var(--border-strong);
+      border-radius: 999px;
+      background: var(--surface);
+      overflow: hidden;
+      transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    .form-wrap:focus-within {
+      border-color: var(--accent-border);
+      box-shadow: 0 0 0 3px rgba(200,255,87,0.1);
+    }
+    .form-wrap input {
+      flex: 1;
+      border: none;
+      outline: none;
+      height: 56px;
+      padding: 0 22px;
+      background: transparent;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 400;
+      letter-spacing: 0.01em;
+      font-family: "Instrument Sans", sans-serif;
+      display: flex;
+      align-items: center;
+    }
+    .form-wrap input::placeholder { color: var(--muted); }
+    .form-wrap button {
+      border: none;
+      height: 56px;
+      padding: 0 28px;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      font-family: "Instrument Sans", sans-serif;
+      color: #080810;
+      background: var(--accent);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.18s;
+    }
+    .form-wrap button:hover { opacity: 0.88; }
+    .form-note {
+      font-family: "DM Mono", monospace;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .status-msg {
+      display: none;
+      width: 100%;
+      font-family: "DM Mono", monospace;
+      font-size: 12px;
+      border-radius: 10px;
+      padding: 10px 12px;
+      text-align: center;
+      letter-spacing: 0.02em;
+    }
+    .status-msg.show { display: block; }
+    .status-msg.success {
+      color: var(--accent);
+      border: 1px solid var(--accent-border);
+      background: var(--accent-dim);
+    }
+    .status-msg.error {
+      color: var(--danger);
+      border: 1px solid rgba(255,127,127,0.45);
+      background: rgba(255,127,127,0.08);
+    }
+    .hidden { display: none !important; }
+    .stats {
+      margin-top: 70px;
+      padding-top: 44px;
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: repeat(4, minmax(130px, 1fr));
+      gap: 26px;
+      width: min(760px, 100%);
+    }
+    .stat-item { text-align: center; }
+    .stat-num {
+      font-family: "DM Serif Display", serif;
+      font-size: 34px;
+      letter-spacing: -0.8px;
+    }
+    .stat-label {
+      margin-top: 4px;
+      font-family: "DM Mono", monospace;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+    .ticker-strip {
+      position: relative;
+      z-index: 1;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+      overflow: hidden;
+      padding: 13px 0;
+    }
+    .ticker-track {
+      display: flex;
+      width: max-content;
+      animation: tickerMove 26s linear infinite;
+    }
+    .ticker-group {
+      display: flex;
+      gap: 44px;
+      padding-right: 44px;
+    }
+    .ticker-item {
+      font-family: "DM Mono", monospace;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      white-space: nowrap;
+    }
+    .ticker-item::before {
+      content: "·";
+      color: var(--accent);
+    }
+    .section {
+      position: relative;
+      z-index: 1;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 84px 48px;
+    }
+    .section-label {
+      font-family: "DM Mono", monospace;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .video-wrap {
+      position: relative;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+      overflow: hidden;
+      aspect-ratio: 16 / 9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .video-wrap::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(255,255,255,0.02) 2px,
+        rgba(255,255,255,0.02) 4px
+      );
+      pointer-events: none;
+    }
+    .video-placeholder {
+      text-align: center;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      align-items: center;
+      color: var(--muted);
+    }
+    .play-btn {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      border: none;
+      background: var(--accent);
+      color: #080810;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s;
+    }
+    .play-btn:hover { transform: scale(1.06); }
+    .video-label {
+      font-family: "DM Mono", monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-size: 11px;
+    }
+    .features-grid {
+      margin-top: 46px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .feature-card {
+      background: var(--surface);
+      padding: 32px 28px;
+      transition: background-color 0.2s;
+    }
+    .feature-card:hover { background: #181827; }
+    .feature-icon {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      border: 1px solid var(--border-strong);
+      margin-bottom: 18px;
+      font-size: 14px;
+      color: var(--accent);
+      font-family: "DM Mono", monospace;
+    }
+    .feature-title {
+      font-size: 15px;
+      margin-bottom: 10px;
+      letter-spacing: -0.2px;
+    }
+    .feature-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.66;
+    }
+    .how-wrap {
+      margin-top: 44px;
+      display: block;
+      max-width: 860px;
+    }
+    .step {
+      border-top: 1px solid var(--border);
+      padding: 20px 0;
+      display: flex;
+      gap: 20px;
+      transition: padding-left 0.2s;
+    }
+    .step:last-child { border-bottom: 1px solid var(--border); }
+    .step:hover { padding-left: 8px; }
+    .step-num {
+      font-family: "DM Mono", monospace;
+      color: var(--accent);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      min-width: 28px;
+      margin-top: 3px;
+    }
+    .step-title {
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+    .step-desc {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .cta {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 96px 24px;
+      text-align: center;
+      border-top: 1px solid var(--border);
+      position: relative;
+      z-index: 1;
+    }
+    .cta h2 {
+      font-family: "DM Serif Display", serif;
+      font-size: clamp(36px, 5vw, 62px);
+      line-height: 1.08;
+      letter-spacing: -1.4px;
+    }
+    .cta h2 em {
+      color: var(--accent);
+      font-style: italic;
+    }
+    .cta p {
+      color: var(--muted);
+      max-width: 520px;
+      margin: 22px auto 34px;
+      font-size: 16px;
+    }
+    .cta .lead-capture {
+      max-width: 650px;
+    }
+    footer {
+      position: relative;
+      z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 24px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .footer-logo {
+      font-family: "DM Serif Display", serif;
+      font-size: 17px;
+      color: var(--muted);
+    }
+    .footer-copy {
+      font-family: "DM Mono", monospace;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-up { animation: fadeUp 0.7s ease both; }
+    .d1 { animation-delay: 0.1s; }
+    .d2 { animation-delay: 0.22s; }
+    .d3 { animation-delay: 0.34s; }
+    .d4 { animation-delay: 0.46s; }
+    .d5 { animation-delay: 0.58s; }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    @keyframes tickerMove {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+    @media (max-width: 900px) {
+      nav { padding: 16px 18px; }
+      .section { padding: 62px 20px; }
+      .stats { grid-template-columns: repeat(2, 1fr); width: 100%; }
+      .features-grid { grid-template-columns: 1fr; grid-template-rows: auto; }
+      .how-wrap { max-width: 100%; }
+      footer { padding: 22px 20px; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="orb"></div>
+
+  <nav>
+    <div class="logo"><span class="logo-dot"></span>Draftly</div>
+    <div class="nav-right">
+      <button id="langToggle" class="lang-toggle" type="button">EN / RU</button>
+      <div class="nav-badge" data-i18n="nav.badge">Early Access</div>
+    </div>
+  </nav>
+
+  <main>
+    <section class="hero">
+      <div class="hero-label fade-up d1" data-i18n="hero.label">AI-Powered Architectural CAD</div>
+      <h1 class="fade-up d2">
+        <span data-i18n="hero.titleMain">Describe it.</span>
+        <em data-i18n="hero.titleAccent">Draft it.</em><span class="cursor"></span>
+      </h1>
+      <p class="hero-sub fade-up d3" data-i18n="hero.subtitle">
+        Type your building in plain language. Draftly generates precise 2D architectural floor plans and gives you full CAD editing and DXF export in seconds.
+      </p>
+
+      <div class="lead-capture fade-up d4" data-form-id="hero">
+        <form class="form-wrap" novalidate>
+          <input type="email" name="email" data-i18n-placeholder="form.placeholder" placeholder="your@email.com" autocomplete="email" />
+          <button type="submit" data-i18n="hero.button">Get early access</button>
+        </form>
+        <p class="form-note" data-i18n="hero.note">No spam. We'll notify you when Draftly launches.</p>
+        <div class="status-msg" role="status" aria-live="polite"></div>
+      </div>
+
+      <div class="stats fade-up d5">
+        <div class="stat-item">
+          <div class="stat-num">~5s</div>
+          <div class="stat-label" data-i18n="stats.genTime">Generation time</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">DXF</div>
+          <div class="stat-label" data-i18n="stats.export">Export format</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">10+</div>
+          <div class="stat-label" data-i18n="stats.rooms">Room types</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">&infin;</div>
+          <div class="stat-label" data-i18n="stats.buildings">Building types</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="ticker-strip">
+      <div class="ticker-track">
+        <div class="ticker-group">
+          <span class="ticker-item" data-i18n="ticker.0">Residential</span>
+          <span class="ticker-item" data-i18n="ticker.1">Commercial Offices</span>
+          <span class="ticker-item" data-i18n="ticker.2">DXF Export</span>
+          <span class="ticker-item" data-i18n="ticker.3">AI-Generated Layouts</span>
+          <span class="ticker-item" data-i18n="ticker.4">Layer Management</span>
+          <span class="ticker-item" data-i18n="ticker.5">CAD Editing Tools</span>
+          <span class="ticker-item" data-i18n="ticker.6">Dimensions &amp; Annotations</span>
+          <span class="ticker-item" data-i18n="ticker.7">Multi-Floor Plans</span>
+        </div>
+        <div class="ticker-group" aria-hidden="true">
+          <span class="ticker-item" data-i18n="ticker.0">Residential</span>
+          <span class="ticker-item" data-i18n="ticker.1">Commercial Offices</span>
+          <span class="ticker-item" data-i18n="ticker.2">DXF Export</span>
+          <span class="ticker-item" data-i18n="ticker.3">AI-Generated Layouts</span>
+          <span class="ticker-item" data-i18n="ticker.4">Layer Management</span>
+          <span class="ticker-item" data-i18n="ticker.5">CAD Editing Tools</span>
+          <span class="ticker-item" data-i18n="ticker.6">Dimensions &amp; Annotations</span>
+          <span class="ticker-item" data-i18n="ticker.7">Multi-Floor Plans</span>
+        </div>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="section-label" data-i18n="sections.demo">/ 01 - Demo</div>
+      <div class="video-wrap">
+        <div class="video-placeholder" id="videoPlaceholder">
+          <button class="play-btn" id="playBtn" type="button" aria-label="Play demo">
+            <svg width="21" height="21" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path d="M7 4l10 6-10 6V4z"></path>
+            </svg>
+          </button>
+          <div class="video-label" data-i18n="video.watch">Watch demo</div>
+        </div>
+        <!-- Replace this placeholder with a real <video> tag when demo is available. -->
+      </div>
+    </section>
+
+    <section class="section" style="padding-top:0;">
+      <div class="section-label" data-i18n="sections.features">/ 02 - Features</div>
+      <div class="features-grid">
+        <article class="feature-card">
+          <div class="feature-icon">01</div>
+          <h3 class="feature-title" data-i18n="features.0.title">Text to floor plan</h3>
+          <p class="feature-desc" data-i18n="features.0.desc">Describe your building in plain language. AI extracts rooms, areas and adjacency automatically.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon">02</div>
+          <h3 class="feature-title" data-i18n="features.1.title">Constraint-based layout</h3>
+          <p class="feature-desc" data-i18n="features.1.desc">Smart room placement engine respects adjacency rules, zoning logic, and minimum dimensions.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon">03</div>
+          <h3 class="feature-title" data-i18n="features.2.title">Full CAD toolkit</h3>
+          <p class="feature-desc" data-i18n="features.2.desc">Edit generated plans with lines, arcs, text, dimensions, layers and undo/redo in browser.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon">04</div>
+          <h3 class="feature-title" data-i18n="features.3.title">DXF export</h3>
+          <p class="feature-desc" data-i18n="features.3.desc">Export industry-standard DXF files compatible with AutoCAD and professional CAD workflows.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon">05</div>
+          <h3 class="feature-title" data-i18n="features.4.title">Furniture &amp; symbols</h3>
+          <p class="feature-desc" data-i18n="features.4.desc">Beds, sofas, kitchen appliances and sanitary fixtures are placed by room type automatically.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon">06</div>
+          <h3 class="feature-title" data-i18n="features.5.title">Any building type</h3>
+          <p class="feature-desc" data-i18n="features.5.desc">Apartments, houses, offices, commercial spaces and more with adaptive layout logic.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" style="padding-top:0;">
+      <div class="section-label" data-i18n="sections.how">/ 03 - How it works</div>
+      <div class="how-wrap">
+        <div class="step">
+          <div class="step-num">01</div>
+          <div>
+            <h3 class="step-title" data-i18n="steps.0.title">Describe your building</h3>
+            <p class="step-desc" data-i18n="steps.0.desc">Type what you need: rooms, areas, floors and style. Be as specific or as broad as you want.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <div>
+            <h3 class="step-title" data-i18n="steps.1.title">AI parses the layout</h3>
+            <p class="step-desc" data-i18n="steps.1.desc">The model creates a room graph with constraints and adjacency, then solves the plan structure.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">03</div>
+          <div>
+            <h3 class="step-title" data-i18n="steps.2.title">Plan appears on canvas</h3>
+            <p class="step-desc" data-i18n="steps.2.desc">Walls, doors, windows, labels and dimensions are generated as editable CAD elements.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">04</div>
+          <div>
+            <h3 class="step-title" data-i18n="steps.3.title">Refine and export</h3>
+            <p class="step-desc" data-i18n="steps.3.desc">Adjust details in the editor and export a clean DXF file for production workflows.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta">
+      <h2>
+        <span data-i18n="cta.titleMain">Design faster.</span>
+        <em data-i18n="cta.titleAccent">Think clearer.</em>
+      </h2>
+      <p data-i18n="cta.subtitle">Join the waitlist and be first to experience AI architectural drafting when we launch.</p>
+      <div class="lead-capture" data-form-id="cta">
+        <form class="form-wrap" novalidate>
+          <input type="email" name="email" data-i18n-placeholder="form.placeholder" placeholder="your@email.com" autocomplete="email" />
+          <button type="submit" data-i18n="cta.button">Join the waitlist</button>
+        </form>
+        <div class="status-msg" role="status" aria-live="polite"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-logo">Draftly</div>
+    <div class="footer-copy" data-i18n="footer.copy">© 2026 - All rights reserved</div>
+  </footer>
+
+  <script>
+    const SUPABASE_EDGE_FUNCTION_URL = "YOUR_SUPABASE_EDGE_FUNCTION_URL";
+    // Setup note:
+    // 1) Edge Function sends magic-link via Resend.
+    // 2) User confirms email from link and function marks contact as verified.
+    // 3) Return JSON with message: "sent", "resent", or "already_verified".
+
+    const i18n = {
+      en: {
+        "nav.badge": "Early Access",
+        "hero.label": "AI-Powered Architectural CAD",
+        "hero.titleMain": "Describe it.",
+        "hero.titleAccent": "Draft it.",
+        "hero.subtitle": "Type your building in plain language. Draftly generates precise 2D architectural floor plans and gives you full CAD editing and DXF export in seconds.",
+        "hero.button": "Get early access",
+        "hero.note": "No spam. We'll notify you when Draftly launches.",
+        "stats.genTime": "Generation time",
+        "stats.export": "Export format",
+        "stats.rooms": "Room types",
+        "stats.buildings": "Building types",
+        "sections.demo": "/ 01 - Demo",
+        "sections.features": "/ 02 - Features",
+        "sections.how": "/ 03 - How it works",
+        "video.watch": "Watch demo",
+        "video.placeholderAfterClick": "Replace this block with your real <video> embed.",
+        "features.0.title": "Text to floor plan",
+        "features.0.desc": "Describe your building in plain language. AI extracts rooms, areas and adjacency automatically.",
+        "features.1.title": "Constraint-based layout",
+        "features.1.desc": "Smart room placement engine respects adjacency rules, zoning logic, and minimum dimensions.",
+        "features.2.title": "Full CAD toolkit",
+        "features.2.desc": "Edit generated plans with lines, arcs, text, dimensions, layers and undo/redo in browser.",
+        "features.3.title": "DXF export",
+        "features.3.desc": "Export industry-standard DXF files compatible with AutoCAD and professional CAD workflows.",
+        "features.4.title": "Furniture & symbols",
+        "features.4.desc": "Beds, sofas, kitchen appliances and sanitary fixtures are placed by room type automatically.",
+        "features.5.title": "Any building type",
+        "features.5.desc": "Apartments, houses, offices, commercial spaces and more with adaptive layout logic.",
+        "steps.0.title": "Describe your building",
+        "steps.0.desc": "Type what you need: rooms, areas, floors and style. Be as specific or as broad as you want.",
+        "steps.1.title": "AI parses the layout",
+        "steps.1.desc": "The model creates a room graph with constraints and adjacency, then solves the plan structure.",
+        "steps.2.title": "Plan appears on canvas",
+        "steps.2.desc": "Walls, doors, windows, labels and dimensions are generated as editable CAD elements.",
+        "steps.3.title": "Refine and export",
+        "steps.3.desc": "Adjust details in the editor and export a clean DXF file for production workflows.",
+        "cta.titleMain": "Design faster.",
+        "cta.titleAccent": "Think clearer.",
+        "cta.subtitle": "Join the waitlist and be first to experience AI architectural drafting when we launch.",
+        "cta.button": "Join the waitlist",
+        "footer.copy": "© 2026 - All rights reserved",
+        "form.placeholder": "your@email.com",
+        "form.error.invalidEmail": "Please enter a valid email address.",
+        "form.error.server": "Could not submit. Please try again in a moment.",
+        "form.success.sent": "Success. Check your inbox to verify your email.",
+        "form.success.resent": "Verification email resent. Please check your inbox.",
+        "form.success.already_verified": "This email is already verified. We will notify you on launch.",
+        "ticker.0": "Residential",
+        "ticker.1": "Commercial Offices",
+        "ticker.2": "DXF Export",
+        "ticker.3": "AI-Generated Layouts",
+        "ticker.4": "Layer Management",
+        "ticker.5": "CAD Editing Tools",
+        "ticker.6": "Dimensions & Annotations",
+        "ticker.7": "Multi-Floor Plans"
+      },
+      ru: {
+        "nav.badge": "Ранний доступ",
+        "hero.label": "Архитектурный CAD с ИИ",
+        "hero.titleMain": "Опишите идею.",
+        "hero.titleAccent": "Draftly нарисует.",
+        "hero.subtitle": "Опишите здание обычным языком. Draftly генерирует точные 2D-планы и дает полный CAD-редактор с экспортом DXF за секунды.",
+        "hero.button": "Получить ранний доступ",
+        "hero.note": "Без спама. Уведомим вас, когда Draftly запустится.",
+        "stats.genTime": "Время генерации",
+        "stats.export": "Формат экспорта",
+        "stats.rooms": "Типы помещений",
+        "stats.buildings": "Типы зданий",
+        "sections.demo": "/ 01 - Демо",
+        "sections.features": "/ 02 - Возможности",
+        "sections.how": "/ 03 - Как это работает",
+        "video.watch": "Смотреть демо",
+        "video.placeholderAfterClick": "Замените этот блок на реальный <video> embed.",
+        "features.0.title": "Текст в план этажа",
+        "features.0.desc": "Опишите здание простым языком. ИИ автоматически извлекает комнаты, площади и связи между ними.",
+        "features.1.title": "Планировка с ограничениями",
+        "features.1.desc": "Умный движок учитывает соседство помещений, зонирование и минимальные размеры.",
+        "features.2.title": "Полный CAD-инструментарий",
+        "features.2.desc": "Редактируйте план: линии, дуги, текст, размеры, слои и undo/redo прямо в браузере.",
+        "features.3.title": "Экспорт в DXF",
+        "features.3.desc": "Экспортируйте DXF-файлы, совместимые с AutoCAD и профессиональными CAD-процессами.",
+        "features.4.title": "Мебель и символы",
+        "features.4.desc": "Кровати, диваны, кухонная техника и сантехника размещаются автоматически по типу комнаты.",
+        "features.5.title": "Любой тип здания",
+        "features.5.desc": "Квартиры, дома, офисы, коммерческие объекты и другие сценарии с адаптивной логикой.",
+        "steps.0.title": "Опишите здание",
+        "steps.0.desc": "Введите нужные комнаты, площади, этажи и стиль. Можно подробно или в общих чертах.",
+        "steps.1.title": "ИИ разбирает структуру",
+        "steps.1.desc": "Модель создает граф помещений с ограничениями и соседством, затем строит планировку.",
+        "steps.2.title": "План появляется на холсте",
+        "steps.2.desc": "Стены, двери, окна, подписи и размеры формируются как редактируемые CAD-объекты.",
+        "steps.3.title": "Уточните и экспортируйте",
+        "steps.3.desc": "Подправьте детали в редакторе и экспортируйте чистый DXF для рабочих процессов.",
+        "cta.titleMain": "Проектируйте быстрее.",
+        "cta.titleAccent": "Думайте яснее.",
+        "cta.subtitle": "Вступайте в лист ожидания и получите доступ к AI-архпроектированию одним из первых.",
+        "cta.button": "Присоединиться к листу",
+        "footer.copy": "© 2026 - Все права защищены",
+        "form.placeholder": "your@email.com",
+        "form.error.invalidEmail": "Введите корректный email.",
+        "form.error.server": "Не удалось отправить. Попробуйте еще раз через минуту.",
+        "form.success.sent": "Готово. Проверьте почту для подтверждения email.",
+        "form.success.resent": "Письмо с подтверждением отправлено повторно.",
+        "form.success.already_verified": "Этот email уже подтвержден. Сообщим о запуске.",
+        "ticker.0": "Жилая архитектура",
+        "ticker.1": "Коммерческие офисы",
+        "ticker.2": "Экспорт DXF",
+        "ticker.3": "Планировки от ИИ",
+        "ticker.4": "Управление слоями",
+        "ticker.5": "CAD-инструменты",
+        "ticker.6": "Размеры и аннотации",
+        "ticker.7": "Многоэтажные планы"
+      }
+    };
+
+    let currentLang = "en";
+
+    function t(key) {
+      return i18n[currentLang][key] || i18n.en[key] || key;
+    }
+
+    function applyTranslations() {
+      document.documentElement.lang = currentLang;
+      document.querySelectorAll("[data-i18n]").forEach((node) => {
+        node.textContent = t(node.getAttribute("data-i18n"));
+      });
+      document.querySelectorAll("[data-i18n-placeholder]").forEach((node) => {
+        node.setAttribute("placeholder", t(node.getAttribute("data-i18n-placeholder")));
+      });
+    }
+
+    function isValidEmail(value) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    }
+
+    function setStatus(container, message, type) {
+      const status = container.querySelector(".status-msg");
+      status.textContent = message;
+      status.classList.remove("success", "error");
+      status.classList.add(type, "show");
+    }
+
+    function hideStatus(container) {
+      const status = container.querySelector(".status-msg");
+      status.textContent = "";
+      status.classList.remove("show", "success", "error");
+    }
+
+    function hideFormShowSuccess(container, message) {
+      const form = container.querySelector("form");
+      const note = container.querySelector(".form-note");
+      form.classList.add("hidden");
+      if (note) note.classList.add("hidden");
+      setStatus(container, message, "success");
+    }
+
+    async function submitWaitlist(email) {
+      const response = await fetch(SUPABASE_EDGE_FUNCTION_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
+      });
+      if (!response.ok) {
+        throw new Error("Request failed");
+      }
+      return response.json();
+    }
+
+    function setupForms() {
+      document.querySelectorAll("[data-form-id]").forEach((container) => {
+        const form = container.querySelector("form");
+        const input = form.querySelector("input[type='email']");
+
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          hideStatus(container);
+          input.style.outline = "";
+
+          const email = input.value.trim();
+          if (!isValidEmail(email)) {
+            input.style.outline = "1px solid rgba(255,127,127,0.7)";
+            setStatus(container, t("form.error.invalidEmail"), "error");
+            return;
+          }
+
+          try {
+            const data = await submitWaitlist(email);
+            if (data && (data.message === "sent" || data.message === "resent")) {
+              hideFormShowSuccess(container, t(`form.success.${data.message}`));
+              return;
+            }
+            if (data && data.message === "already_verified") {
+              hideFormShowSuccess(container, t("form.success.already_verified"));
+              return;
+            }
+            setStatus(container, t("form.error.server"), "error");
+          } catch (error) {
+            setStatus(container, t("form.error.server"), "error");
+          }
+        });
+
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            form.requestSubmit();
+          }
+        });
+      });
+    }
+
+    function setupVideoAction() {
+      const playBtn = document.getElementById("playBtn");
+      const placeholder = document.getElementById("videoPlaceholder");
+      playBtn.addEventListener("click", () => {
+        placeholder.innerHTML = `<div class="video-label">${t("video.placeholderAfterClick")}</div>`;
+      });
+    }
+
+    function setupOrbMotion() {
+      const orb = document.querySelector(".orb");
+      document.addEventListener("mousemove", (event) => {
+        const offsetX = ((event.clientX / window.innerWidth) - 0.5) * 40;
+        orb.style.transform = `translateX(calc(-50% + ${offsetX}px))`;
+      });
+    }
+
+    function setupLanguageToggle() {
+      const toggle = document.getElementById("langToggle");
+      toggle.addEventListener("click", () => {
+        currentLang = currentLang === "en" ? "ru" : "en";
+        applyTranslations();
+      });
+    }
+
+    setupForms();
+    setupVideoAction();
+    setupOrbMotion();
+    setupLanguageToggle();
+    applyTranslations();
+  </script>
+</body>
+</html>
