@@ -788,20 +788,7 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const SUPABASE_URL = "https://lbhfmmykdfkpgaatiesd.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiaGZtbXlrZGZrcGdhYXRpZXNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxOTYxMDQsImV4cCI6MjA5Mjc3MjEwNH0.ZVT0Tx29zlCcawIZRbC_b5szccBVsIYUFcmfGL_W5-8";
-    let supabaseClient = null;
-    try {
-      if (window.supabase) {
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      } else {
-        console.warn("Supabase is not loaded.");
-      }
-    } catch (e) {
-      console.error("Error initializing Supabase:", e);
-    }
 
     const i18n = {
       en: {
@@ -1001,17 +988,16 @@
     }
 
     async function submitWaitlist(email) {
-      const response = await fetch('https://lbhfmmykdfkpgaatiesd.supabase.co/functions/v1/waitlist', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email })
-      });
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return await response.json();
+      const res = await fetch(
+        'https://lbhfmmykdfkpgaatiesd.supabase.co/functions/v1/waitlist',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        }
+      );
+      const data = await res.json();
+      return data;
     }
 
     async function handleReturn() {
