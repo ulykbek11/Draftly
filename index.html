@@ -68,9 +68,12 @@
       align-items: center;
       justify-content: space-between;
       padding: 18px 48px;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      backdrop-filter: blur(12px);
-      background: rgba(8,8,16,0.74);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      background-color: var(--bg);
+      background-image:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 60px 60px;
     }
     .logo {
       font-family: "DM Serif Display", serif;
@@ -91,32 +94,24 @@
     .nav-right {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 4px;
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 999px;
-      background: rgba(8,8,16,0.72);
     }
-    .lang-toggle, .nav-badge {
+    .lang-toggle {
       font-family: "Instrument Sans", sans-serif;
       font-size: 11px;
       font-weight: 500;
       letter-spacing: 0.06em;
       text-transform: uppercase;
       border-radius: 999px;
-      padding: 6px 12px;
+      padding: 8px 16px;
       border: 1px solid var(--border-strong);
-    }
-    .lang-toggle {
       color: var(--text);
       background: rgba(255,255,255,0.03);
       cursor: pointer;
+      transition: all 0.2s;
     }
-    .lang-toggle:hover { border-color: var(--accent-border); }
-    .nav-badge {
-      color: var(--accent);
-      background: var(--accent-dim);
-      border-color: var(--accent-border);
+    .lang-toggle:hover { 
+      border-color: var(--accent-border); 
+      background: rgba(255,255,255,0.08);
     }
     main {
       position: relative;
@@ -614,7 +609,6 @@
     <div class="logo"><span class="logo-dot"></span>Draftly</div>
     <div class="nav-right">
       <button id="langToggle" class="lang-toggle" type="button">EN / RU</button>
-      <div class="nav-badge" data-i18n="nav.badge">Early Access</div>
     </div>
   </nav>
 
@@ -686,6 +680,10 @@
     <section class="section">
       <div class="section-label" data-i18n="sections.demo">/ 01 - Demo</div>
       <div class="video-wrap">
+        <video id="demoVideo" style="width: 100%; height: 100%; display: none; object-fit: cover;" controls>
+          <!-- Using data-src allows dynamic updates smoothly without conflicting with source element -->
+          Your browser does not support the video tag.
+        </video>
         <div class="video-placeholder" id="videoPlaceholder">
           <button class="play-btn" id="playBtn" type="button" aria-label="Play demo">
             <svg width="21" height="21" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -694,7 +692,6 @@
           </button>
           <div class="video-label" data-i18n="video.watch">Watch demo</div>
         </div>
-        <!-- Replace this placeholder with a real <video> tag when demo is available. -->
       </div>
     </section>
 
@@ -803,7 +800,16 @@
   <script>
     const SUPABASE_URL = "https://lbhfmmykdfkpgaatiesd.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiaGZtbXlrZGZrcGdhYXRpZXNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxOTYxMDQsImV4cCI6MjA5Mjc3MjEwNH0.ZVT0Tx29zlCcawIZRbC_b5szccBVsIYUFcmfGL_W5-8";
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    let supabaseClient = null;
+    try {
+      if (window.supabase) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      } else {
+        console.warn("Supabase is not loaded.");
+      }
+    } catch (e) {
+      console.error("Error initializing Supabase:", e);
+    }
 
     const i18n = {
       en: {
@@ -928,20 +934,53 @@
       }
     };
 
-    let currentLang = "en";
+    let currentLang = localStorage.getItem("lang") || "en";
 
     function t(key) {
       return i18n[currentLang][key] || i18n.en[key] || key;
     }
 
     function applyTranslations() {
+      console.log("Applying translations for language:", currentLang);
       document.documentElement.lang = currentLang;
       document.querySelectorAll("[data-i18n]").forEach((node) => {
-        node.textContent = t(node.getAttribute("data-i18n"));
+        const key = node.getAttribute("data-i18n");
+        const translation = t(key);
+        console.log(`Translating ${key} to: ${translation}`);
+        node.textContent = translation;
       });
       document.querySelectorAll("[data-i18n-placeholder]").forEach((node) => {
-        node.setAttribute("placeholder", t(node.getAttribute("data-i18n-placeholder")));
+        const key = node.getAttribute("data-i18n-placeholder");
+        const translation = t(key);
+        console.log(`Setting placeholder for ${key} to: ${translation}`);
+        node.setAttribute("placeholder", translation);
       });
+
+      const toggle = document.getElementById("langToggle");
+      if (toggle) {
+        toggle.textContent = currentLang === "en" ? "EN / RU" : "RU / EN";
+        console.log("Toggle button text set to:", toggle.textContent);
+      }
+
+      const video = document.getElementById("demoVideo");
+      if (video) {
+        const isPlaying = !video.paused && !video.ended && video.readyState > 2;
+        const currentTime = video.currentTime;
+        const newSrc = currentLang === "en" ? "video_en.mp4" : "video_ru.mp4";
+        
+        const currentSrc = video.getAttribute("src") || "";
+        if (currentSrc !== newSrc) {
+            video.setAttribute("src", newSrc);
+            video.load();
+            if (isPlaying) {
+                video.addEventListener('loadedmetadata', function onLoaded() {
+                    video.currentTime = currentTime;
+                    video.play().catch(e => console.log("Auto-play prevented", e));
+                    video.removeEventListener('loadedmetadata', onLoaded);
+                });
+            }
+        }
+      }
     }
 
     function isValidEmail(value) {
@@ -970,7 +1009,10 @@
     }
 
     async function submitWaitlist(email) {
-      const { error } = await supabase.auth.signInWithOtp({
+      if (!supabaseClient) {
+        throw new Error("Supabase is not initialized.");
+      }
+      const { error } = await supabaseClient.auth.signInWithOtp({
         email,
         options: {
           emailRedirectTo: `${window.location.origin}${window.location.pathname}?confirmed=1`
@@ -983,12 +1025,13 @@
     }
 
     async function handleReturn() {
+      if (!supabaseClient) return;
       const url = new URL(window.location.href);
       if (url.searchParams.get('confirmed') === '1') {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await supabaseClient.auth.getSession();
         if (session && session.user) {
           const user = session.user;
-          const { error } = await supabase
+          const { error } = await supabaseClient
             .from('waitlist')
             .upsert({ id: user.id, email: user.email, confirmed_at: new Date().toISOString() });
           
@@ -1063,9 +1106,18 @@
     function setupVideoAction() {
       const playBtn = document.getElementById("playBtn");
       const placeholder = document.getElementById("videoPlaceholder");
-      playBtn.addEventListener("click", () => {
-        placeholder.innerHTML = `<div class="video-label">${t("video.placeholderAfterClick")}</div>`;
-      });
+      const video = document.getElementById("demoVideo");
+      if (playBtn) {
+        playBtn.addEventListener("click", () => {
+          placeholder.style.display = "none";
+          video.style.display = "block";
+          if (!video.getAttribute("src")) {
+              video.setAttribute("src", currentLang === "en" ? "video_en.mp4" : "video_ru.mp4");
+              video.load();
+          }
+          video.play().catch(e => console.log("Play failed", e));
+        });
+      }
     }
 
     function setupOrbMotion() {
@@ -1078,8 +1130,11 @@
 
     function setupLanguageToggle() {
       const toggle = document.getElementById("langToggle");
+      console.log("Setting up language toggle, toggle element:", toggle);
       toggle.addEventListener("click", () => {
         currentLang = currentLang === "en" ? "ru" : "en";
+        console.log("Language toggled to:", currentLang);
+        localStorage.setItem("lang", currentLang);
         applyTranslations();
       });
     }
