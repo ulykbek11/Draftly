@@ -908,10 +908,10 @@
         "footer.copy": "© 2026 - Все права защищены",
         "form.placeholder": "your@email.com",
         "form.error.invalidEmail": "Введите корректный email.",
-        "form.error.server": "Не удалось отправить. Попробуйте еще раз через минуту.",
+        "form.error.server": "Что-то пошло не так, попробуйте снова",
         "form.success.sent": "Готово. Проверьте почту для подтверждения email.",
         "form.success.resent": "Письмо с подтверждением отправлено повторно.",
-        "form.success.already_verified": "Этот email уже подтвержден. Сообщим о запуске.",
+        "form.success.already_verified": "Вы уже в списке!",
         "ticker.0": "Жилая архитектура",
         "ticker.1": "Коммерческие офисы",
         "ticker.2": "Экспорт DXF",
@@ -1001,55 +1001,53 @@
     }
 
     async function submitWaitlist(email) {
-      if (!supabaseClient) {
-        throw new Error("Supabase is not initialized.");
-      }
-      const { error } = await supabaseClient.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}${window.location.pathname}?confirmed=1`
-        }
+      const response = await fetch('https://lbhfmmykdfkpgaatiesd.supabase.co/functions/v1/waitlist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email })
       });
-      if (error) {
-        throw error;
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
       }
-      return { message: "sent" };
+      return await response.json();
     }
 
     async function handleReturn() {
-      if (!supabaseClient) return;
       const url = new URL(window.location.href);
-      if (url.searchParams.get('confirmed') === '1') {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (session && session.user) {
-          const user = session.user;
-          const { error } = await supabaseClient
-            .from('waitlist')
-            .upsert({ id: user.id, email: user.email, confirmed_at: new Date().toISOString() });
-          
-          if (!error) {
-            // Show custom modal instead of alert
-            const modal = document.getElementById("successModal");
-            const closeBtn = document.getElementById("closeModalBtn");
-            
-            modal.classList.add("show");
-            modal.setAttribute("aria-hidden", "false");
+      const verified = url.searchParams.get('verified');
+      if (verified) {
+        const modal = document.getElementById("successModal");
+        const closeBtn = document.getElementById("closeModalBtn");
+        const title = modal.querySelector(".modal-title");
+        const desc = modal.querySelector(".modal-desc");
 
-            const closeModal = () => {
-              modal.classList.remove("show");
-              modal.setAttribute("aria-hidden", "true");
-            };
-
-            closeBtn.addEventListener("click", closeModal);
-            modal.addEventListener("click", (e) => {
-              if (e.target === modal) closeModal();
-            });
-
-            // Remove the confirmed param from URL to clean up
-            url.searchParams.delete('confirmed');
-            window.history.replaceState({}, document.title, url.toString());
-          }
+        if (verified === 'true') {
+          title.textContent = "Email подтверждён!";
+          desc.textContent = "Ваш email подтверждён и вы в списке ожидания.";
+        } else if (verified === 'error') {
+          title.textContent = "Ошибка подтверждения";
+          desc.textContent = "Произошла ошибка при подтверждении email. Попробуйте снова.";
+        } else if (verified === 'already') {
+          title.textContent = "Email уже подтверждён";
+          desc.textContent = "Ваш email уже был подтверждён ранее.";
         }
+
+        modal.classList.add("show");
+        modal.setAttribute("aria-hidden", "false");
+
+        const closeModal = () => {
+          modal.classList.remove("show");
+          modal.setAttribute("aria-hidden", "true");
+          url.searchParams.delete('verified');
+          window.history.replaceState({}, document.title, url.toString());
+        };
+
+        closeBtn.addEventListener("click", closeModal);
+        modal.addEventListener("click", (e) => {
+          if (e.target === modal) closeModal();
+        });
       }
     }
 
@@ -1057,6 +1055,8 @@
       document.querySelectorAll("[data-form-id]").forEach((container) => {
         const form = container.querySelector("form");
         const input = form.querySelector("input[type='email']");
+        const button = form.querySelector("button");
+        const originalButtonText = button.textContent;
 
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
@@ -1069,6 +1069,9 @@
             setStatus(container, t("form.error.invalidEmail"), "error");
             return;
           }
+
+          button.disabled = true;
+          button.textContent = "Отправка…";
 
           try {
             const data = await submitWaitlist(email);
@@ -1083,6 +1086,9 @@
             setStatus(container, t("form.error.server"), "error");
           } catch (error) {
             setStatus(container, t("form.error.server"), "error");
+          } finally {
+            button.disabled = false;
+            button.textContent = originalButtonText;
           }
         });
 
