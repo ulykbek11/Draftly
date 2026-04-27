@@ -351,6 +351,31 @@
       );
       pointer-events: none;
     }
+    .video-wrap video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .video-fallback {
+      position: absolute;
+      inset: 0;
+      border: none;
+      background: rgba(8, 8, 16, 0.7);
+      color: var(--text);
+      font-size: 32px;
+      font-family: "Instrument Sans", sans-serif;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      z-index: 2;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      padding: 0 24px;
+    }
+    .video-fallback.hidden {
+      display: none;
+    }
     .video-placeholder {
       text-align: center;
       padding: 18px;
@@ -680,10 +705,11 @@
     <section class="section">
       <div class="section-label" data-i18n="sections.demo">/ 01 - Demo</div>
       <div class="video-wrap">
-        <video id="demoVideo" src="video_en.mp4" autoplay muted loop playsinline preload="auto" style="width: 100%; height: 100%; object-fit: cover;">
+        <video id="demoVideo" src="video_en.mp4" autoplay muted loop playsinline preload="auto">
           <source src="video_en.mp4" type="video/mp4" />
           Your browser does not support the video tag.
         </video>
+        <button id="videoFallbackBtn" class="video-fallback hidden" type="button">Play demo</button>
       </div>
     </section>
 
@@ -944,28 +970,47 @@
       }
 
       const video = document.getElementById("demoVideo");
-      if (video) {
-        const isPlaying = !video.paused && !video.ended && video.readyState > 2;
-        const currentTime = video.currentTime;
-        const newSrc = currentLang === "en" ? "video_en.mp4" : "video_ru.mp4";
-        const currentSrc = (video.currentSrc || video.getAttribute("src") || "").split("/").pop();
-
-        if (currentSrc !== newSrc) {
-            const onLoaded = () => {
-                video.currentTime = currentTime || 0;
-                video.play().catch((e) => console.log("Auto-play prevented", e));
-                video.removeEventListener('loadedmetadata', onLoaded);
-            };
-            video.addEventListener('loadedmetadata', onLoaded);
-            video.src = newSrc;
-            const source = video.querySelector('source');
-            if (source) {
-              source.src = newSrc;
-            }
-            video.load();
-        } else if (!isPlaying) {
-            video.play().catch((e) => console.log("Auto-play prevented", e));
+      const videoButton = document.getElementById("videoFallbackBtn");
+      const updateVideoSource = (src) => {
+        const source = video.querySelector('source');
+        if (source) source.src = src;
+        if (video.getAttribute('src') !== src) {
+          video.src = src;
         }
+        video.load();
+      };
+
+      const toggleFallback = (show) => {
+        if (!videoButton) return;
+        videoButton.classList.toggle('hidden', !show);
+      };
+
+      if (video) {
+        const newSrc = currentLang === "en" ? "video_en.mp4" : "video_ru.mp4";
+        updateVideoSource(newSrc);
+
+        video.play().then(() => {
+          toggleFallback(false);
+        }).catch((e) => {
+          console.log("Video playback prevented", e);
+          toggleFallback(true);
+        });
+
+        video.addEventListener('playing', () => toggleFallback(false));
+        video.addEventListener('pause', () => {
+          if (video.currentTime > 0 && !video.ended) {
+            toggleFallback(true);
+          }
+        });
+        video.addEventListener('error', () => toggleFallback(true));
+      }
+
+      if (videoButton) {
+        videoButton.addEventListener('click', () => {
+          if (video) {
+            video.play().catch((e) => console.log("Play click prevented", e));
+          }
+        });
       }
     }
 
