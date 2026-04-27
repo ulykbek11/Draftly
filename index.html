@@ -680,7 +680,7 @@
     <section class="section">
       <div class="section-label" data-i18n="sections.demo">/ 01 - Demo</div>
       <div class="video-wrap">
-        <video id="demoVideo" autoplay muted loop style="width: 100%; height: 100%; object-fit: cover;">
+        <video id="demoVideo" autoplay muted loop playsinline preload="auto" style="width: 100%; height: 100%; object-fit: cover;">
           <!-- Using data-src allows dynamic updates smoothly without conflicting with source element -->
           Your browser does not support the video tag.
         </video>
@@ -953,13 +953,13 @@
         if (currentSrc !== newSrc) {
             video.setAttribute("src", newSrc);
             video.load();
-            if (isPlaying) {
-                video.addEventListener('loadedmetadata', function onLoaded() {
-                    video.currentTime = currentTime;
-                    video.play().catch(e => console.log("Auto-play prevented", e));
-                    video.removeEventListener('loadedmetadata', onLoaded);
-                });
-            }
+            video.addEventListener('loadedmetadata', function onLoaded() {
+                video.currentTime = currentTime || 0;
+                video.play().catch((e) => console.log("Auto-play prevented", e));
+                video.removeEventListener('loadedmetadata', onLoaded);
+            });
+        } else if (!isPlaying) {
+            video.play().catch((e) => console.log("Auto-play prevented", e));
         }
       }
     }
